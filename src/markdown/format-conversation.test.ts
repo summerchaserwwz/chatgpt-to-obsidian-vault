@@ -13,6 +13,7 @@ describe("formatConversationMarkdown", () => {
         conversationId: conversation.id,
         selectedMessageIds: [conversation.messages[0].id],
         templateId: "source_archive",
+        exportFormat: "markdown",
         includeFrontmatter: true,
         includeSourceLink: true,
         includeTranscript: true,

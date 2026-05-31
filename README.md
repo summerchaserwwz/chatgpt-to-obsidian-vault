@@ -1,6 +1,6 @@
 # ChatGPT to Obsidian Vault
 
-一个本地优先的 Chrome / Edge 扩展，用来把 ChatGPT 会话导出成适合 Obsidian 的 Markdown 文件。
+一个本地优先的 Chrome / Edge 扩展，用来把 ChatGPT 会话导出成 Markdown、TXT、JSON、CSV、HTML、Word-compatible `.doc` 等文件，并保留 Obsidian Vault 直写能力。
 
 它不是普通的“下载聊天记录”按钮，而是一个面向 Obsidian 知识库的导入工作台：
 
@@ -9,9 +9,10 @@
 - 按最近 10 / 25 / 50 条扫描全文
 - 只扫描勾选的会话
 - 选择要导出的消息轮次
+- 选择导出格式
 - 选择 Markdown 模板
 - 生成 YAML frontmatter
-- 预览最终 Markdown
+- 预览最终文件内容
 - 直接写入 Obsidian Vault，或回退保存到浏览器 Downloads
 
 ## 当前状态
@@ -22,9 +23,10 @@
 
 - 已完成主要 UI 和本地导出链路
 - 已支持 `Scan Recent` / `Scan Selected` / `All`
+- 已支持 Markdown、TXT、JSON、CSV、HTML、Word-compatible `.doc`
 - 已支持 Obsidian 路径模板和 frontmatter
 - 已通过本地质量门
-- 仍需要继续强化真实 ChatGPT DOM 兼容、批量扫描进度、失败重试和 Vault 权限持久化
+- 仍需要继续强化真实 ChatGPT DOM 兼容、批量扫描进度、失败重试、Vault 权限持久化、PDF/截图/ZIP 导出
 
 ## 功能概览
 
@@ -40,8 +42,21 @@
 说明：
 
 - ChatGPT 侧边栏通常只有标题和链接，没有完整正文。
-- 要导出完整 Markdown，扩展必须打开对应会话页面并抽取真实消息内容。
+- 要导出完整文件，扩展必须打开对应会话页面并抽取真实消息内容。
 - 所以全量扫描会比较慢，推荐先用 `Scan Recent` 或 `Scan Selected`。
+
+### 导出格式
+
+| 格式 | 扩展名 | 说明 |
+| --- | --- | --- |
+| Markdown | `.md` | Obsidian 优先，支持 frontmatter 和模板 |
+| Text | `.txt` | 纯文本转写，适合检索和长期归档 |
+| JSON | `.json` | 结构化数据，适合自动化处理 |
+| CSV | `.csv` | 一条消息一行，适合表格分析 |
+| HTML | `.html` | 可浏览的单文件文档 |
+| Word | `.doc` | Word 可打开的 HTML 文档 |
+
+说明：当前版本没有假装支持 PDF、截图或 ZIP。它们需要单独的渲染、截图和打包管线，会作为下一阶段能力实现。
 
 ### 模板
 
@@ -52,7 +67,7 @@
 | Research Note | 整理资料、引用、发现、待验证问题和开放问题 |
 | Coding / Debug Note | 保留错误现象、假设、修复动作和验证步骤 |
 
-模板只改变 Markdown 的结构，不会改写原始对话内容。
+模板主要改变 Markdown 的结构；其他格式会按所选消息输出，不会改写原始对话内容。
 
 ### 保存位置
 
@@ -139,7 +154,7 @@ release/chatgpt-to-obsidian-vault-0.1.0.zip
 6. 在中间面板选择要导出的消息轮次。
 7. 在右侧选择模板、路径和写入策略。
 8. 点击 `Choose Vault` 授权 Obsidian 文件夹，或使用 Downloads fallback。
-9. 点击 `Write Vault` 或 `Batch` 写入 Markdown。
+9. 点击 `Write Vault` 或 `Batch` 写入所选格式文件。
 
 ## 路径模板
 
@@ -149,7 +164,7 @@ release/chatgpt-to-obsidian-vault-0.1.0.zip
 AI/ChatGPT/{yyyy}/{MM}/{yyyy-MM-dd} - {safeTitle}.md
 ```
 
-扩展会根据会话标题和日期生成最终 Markdown 路径。
+扩展会根据会话标题、日期和所选格式生成最终路径。
 
 ## 质量检查
 

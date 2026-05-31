@@ -8,16 +8,17 @@ Date: 2026-05-31.
 
 ## 1. Product Summary
 
-ChatGPT to Obsidian Vault is a local-first Chrome/Edge extension that turns selected ChatGPT conversations into clean Obsidian Markdown source files.
+ChatGPT to Obsidian Vault is a local-first Chrome/Edge extension that turns selected ChatGPT conversations into clean export files, with Obsidian-ready Markdown as the strongest workflow and multi-format export as the main product surface.
 
 The product centers on a single high-quality workflow:
 
 1. select conversations
 2. select valuable conversation content
-3. choose an export template
-4. preview the exact Markdown
-5. write into an authorized Obsidian Vault folder
-6. update existing notes safely on future exports
+3. choose an export format
+4. choose an export template when Markdown structure matters
+5. preview the exact file content
+6. write into an authorized Obsidian Vault folder or download locally
+7. update existing notes safely on future exports
 
 ## 2. Problem
 
@@ -52,17 +53,25 @@ Save the valuable parts of ChatGPT into Obsidian without leaving the flow.
 
 ## 5. Positioning
 
+Market realignment from XWX AI Chat Exporter and ChatExport AI:
+
+- competitors lead with format breadth, not just Markdown
+- users expect PDF, Word, Markdown, TXT, JSON, CSV, HTML, Screenshot, ZIP, and Notion-style destinations to be visible as a format matrix
+- competitors emphasize per-message selection, format preservation, quick export, privacy, and broad AI-platform coverage
+- this product should keep its Obsidian/Vault advantage, but should not position itself as Markdown-only
+
 ChatGPT to Obsidian Vault is not:
 
-- a generic AI chat exporter
+- a fully generic AI chat exporter yet
 - a ChatGPT all-in-one enhancement suite
 - a cloud sync product
 - a summarization product
-- a Notion/PDF/DOCX exporter
+- a fake PDF/Screenshot exporter before a real render pipeline exists
 
 ChatGPT to Obsidian Vault is:
 
 - Obsidian-first
+- multi-format by default
 - local-first
 - source-file-first
 - batch-oriented
@@ -92,11 +101,18 @@ ChatGPT to Obsidian Vault is:
     - Decision Record
     - Research Note
     - Coding / Debug Note
-12. Obsidian Markdown preview.
-13. YAML properties/frontmatter generation.
-14. File path template generation.
-15. Direct Vault writing through File System Access API.
-16. Downloads fallback.
+12. Export format selector:
+    - Markdown `.md`
+    - Text `.txt`
+    - JSON `.json`
+    - CSV `.csv`
+    - HTML `.html`
+    - Word-compatible `.doc`
+13. Format-specific preview.
+14. YAML properties/frontmatter generation for Markdown.
+15. File path template generation with format-aware extensions.
+16. Direct Vault writing through File System Access API.
+17. Downloads fallback.
 17. Save judgment:
     - new
     - unchanged
@@ -111,13 +127,16 @@ ChatGPT to Obsidian Vault is:
 
 1. AI distillation/summarization.
 2. Notion sync.
-3. PDF/DOCX/PNG export.
+3. True PDF export.
+4. Screenshot/PNG export.
+5. ZIP bundle export.
+6. Native DOCX generation. Current MVP may output Word-compatible `.doc` HTML.
 4. Native companion app.
-5. Firefox/Safari support.
-6. Background sync while ChatGPT is closed.
-7. Automatic all-account history sync through private ChatGPT APIs.
-8. Paid plan or licensing.
-9. Cloud account system.
+7. Firefox/Safari support.
+8. Background sync while ChatGPT is closed.
+9. Automatic all-account history sync through private ChatGPT APIs.
+10. Paid plan or licensing.
+11. Cloud account system.
 
 ## 7. Core User Workflows
 
@@ -142,11 +161,12 @@ ChatGPT to Obsidian Vault is:
 3. Product extracts current conversation.
 4. All content is selected by default.
 5. User optionally deselects noisy turns.
-6. User selects a template.
-7. User checks Markdown preview.
-8. User clicks `Write to Vault`.
-9. Product writes `.md` file.
-10. Product shows success with path and optional "Open in Obsidian".
+6. User selects an export format.
+7. User optionally selects a Markdown template.
+8. User checks file preview.
+9. User clicks `Write to Vault`.
+10. Product writes the selected format file.
+11. Product shows success with path and optional "Open in Obsidian".
 
 ### 7.3 Selective Export
 
@@ -235,19 +255,21 @@ Right panel: template and preview
 - path template
 - write policy
 - frontmatter options
-- Markdown preview
+- format-specific preview
 - write progress
 - save destination explanation:
   - `Choose Vault` enables direct writing through File System Access API.
   - Without a selected Vault, files use browser Downloads fallback.
 
-## 9. Markdown Requirements
+## 9. Export Requirements
 
 ### Default File Path
 
 ```text
 AI/ChatGPT/{yyyy}/{MM}/{yyyy-MM-dd} - {safeTitle}.md
 ```
+
+The path template may include `.md` by default, but the final path must replace that extension with the active export format extension.
 
 ### Required Frontmatter
 
@@ -428,8 +450,8 @@ MVP success is measured by:
 ### M2: Current Conversation Export
 
 - Extract current ChatGPT conversation.
-- Generate Markdown.
-- Preview and copy/download.
+- Generate Markdown, TXT, JSON, CSV, HTML, and Word-compatible `.doc`.
+- Preview and copy/download selected format.
 
 ### M3: Vault Writer
 

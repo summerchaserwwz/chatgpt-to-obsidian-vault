@@ -15,7 +15,8 @@ describe("computeSavePlan", () => {
         title: demoConversations[0].title,
         sourceHash: "sha256:same",
         exportedAt: "2026-05-29T14:30:00+08:00",
-        templateId: "source_archive"
+        templateId: "source_archive",
+        exportFormat: "markdown"
       }
     });
 

@@ -44,12 +44,15 @@ export type Conversation = ConversationSummary & {
 
 export type ExportTemplateId = "source_archive" | "decision_record" | "research_note" | "coding_debug";
 
+export type ExportFormat = "markdown" | "text" | "json" | "csv" | "html" | "word";
+
 export type WritePolicy = "update" | "copy" | "skip";
 
 export type ExportSelection = {
   conversationId: string | null;
   selectedMessageIds: string[];
   templateId: ExportTemplateId;
+  exportFormat: ExportFormat;
   includeFrontmatter: boolean;
   includeSourceLink: boolean;
   includeTranscript: boolean;
@@ -74,12 +77,15 @@ export type ExportIndexRecord = {
   sourceHash: string;
   exportedAt: string;
   templateId: ExportTemplateId;
+  exportFormat: ExportFormat;
 };
 
 export type MarkdownExport = {
-  markdown: string;
+  content: string;
   targetPath: string;
   sourceHash: string;
+  mimeType: string;
+  format: ExportFormat;
 };
 
 export type PermissionResult = {

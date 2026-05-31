@@ -36,7 +36,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "download-markdown") {
-    downloadMarkdown(message.path, message.markdown).then(sendResponse).catch((error) => {
+    downloadMarkdown(message.path, message.markdown, message.mimeType).then(sendResponse).catch((error) => {
       sendResponse({
         ok: false,
         path: message.path,
@@ -272,8 +272,9 @@ function isChatGptTab(url: string | undefined): boolean {
   }
 }
 
-async function downloadMarkdown(path: string, markdown: string): Promise<WriteResult> {
-  const url = `data:text/markdown;charset=utf-8,${encodeURIComponent(markdown)}`;
+async function downloadMarkdown(path: string, markdown: string, mimeType = "text/markdown;charset=utf-8"): Promise<WriteResult> {
+  const safeMimeType = typeof mimeType === "string" && mimeType.length > 0 ? mimeType : "text/plain;charset=utf-8";
+  const url = `data:${safeMimeType},${encodeURIComponent(markdown)}`;
 
   try {
     await chrome.downloads.download({
@@ -282,7 +283,7 @@ async function downloadMarkdown(path: string, markdown: string): Promise<WriteRe
       saveAs: false,
       conflictAction: "overwrite"
     });
-    return { ok: true, path, status: "updated", reason: "Markdown sent to browser Downloads." };
+    return { ok: true, path, status: "updated", reason: "File sent to browser Downloads." };
   } catch (error) {
     return {
       ok: false,

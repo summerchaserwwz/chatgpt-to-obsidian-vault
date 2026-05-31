@@ -14,7 +14,11 @@ export function readExportIndex(): ExportIndexRecord[] {
 
 export function upsertExportIndex(record: ExportIndexRecord): void {
   if (typeof localStorage === "undefined") return;
-  const records = readExportIndex().filter((item) => item.conversationId !== record.conversationId);
+  const records = readExportIndex().filter((item) =>
+    item.conversationId !== record.conversationId
+      || item.targetPath !== record.targetPath
+      || item.exportFormat !== record.exportFormat
+  );
   records.push(record);
   localStorage.setItem(key, JSON.stringify(records));
 }

@@ -15,7 +15,7 @@ Reviewed competitor categories:
 
 Primary sources:
 
-- XWX AI Chat Exporter: https://www.xwxexporter.com/
+- XWX AI Chat Exporter: https://www.xwxexporter.com/zh
 - ChatGPT Exporter Chrome Web Store listing: https://chromewebstore.google.com/detail/chatgpt-exporter-chatgpt/ilmdofdhpnhffldihboadndccenlnfll
 - ChatCache: https://getchatcache.com/
 - ChatShell: https://www.chatshellexport.com/
@@ -25,6 +25,57 @@ Primary sources:
 - GingerCat: https://getgingercat.com/
 - Obsidian Web Clipper help: https://obsidian.md/help/web-clipper
 - Obsidian Web Clipper templates: https://obsidian.md/help/web-clipper/templates
+
+## Multi-format Competitor Refresh
+
+### XWX AI Chat Exporter
+
+Observed positioning:
+
+- one-click export for ChatGPT, Claude, Gemini, DeepSeek, Grok, and broader AI platforms
+- front-page promise includes PDF, Word, Markdown, Notion, and JSON
+- emphasizes code, charts, formulas, and selected-message export
+- FAQ states TXT, Markdown, and Word are local; PDF uses a server-rendering path
+
+Implication:
+
+- format breadth is expected by the market
+- PDF needs a real rendering pipeline and should not be represented as local-only unless implemented that way
+- message-level selection is table stakes
+
+### ChatExport AI
+
+Observed positioning:
+
+- 14+ AI platforms
+- 11 export formats
+- formats include PDF, Word, Markdown, JSON, CSV, HTML, Screenshot, Excel, ZIP, Share Card, and Notion sync
+- free tier claims all formats with a daily cap
+- page claims browser-local generation and per-message selection
+- Pro differentiator includes project export and ZIP packaging
+
+Implication:
+
+- current single-platform scope is narrower
+- immediate gap is PDF/Screenshot/ZIP/Notion/multi-platform
+- current defensible wedge remains direct Vault writing, Obsidian frontmatter/path templates, and update judgment
+
+### Product Response
+
+The product should no longer be presented as Markdown-only. The MVP export matrix is now:
+
+| Format | Status | Notes |
+| --- | --- | --- |
+| Markdown `.md` | Implemented | Obsidian-first with frontmatter and templates |
+| Text `.txt` | Implemented | Plain transcript |
+| JSON `.json` | Implemented | Structured automation format |
+| CSV `.csv` | Implemented | Message table |
+| HTML `.html` | Implemented | Browser-readable document |
+| Word `.doc` | Implemented | Word-compatible HTML document |
+| PDF | Planned | Requires real print/render pipeline |
+| Screenshot/PNG | Planned | Requires visual capture pipeline |
+| ZIP | Planned | Requires archive and attachment bundling |
+| Notion sync | Planned | Requires auth and destination API |
 
 ## Market Pattern
 
@@ -68,7 +119,9 @@ The product is already meaningfully different from generic exporters because it 
 | --- | --- | --- | --- |
 | Current ChatGPT export | Implemented, needs more live regression | Strong | Indirect / page capture |
 | Markdown output | Implemented | Strong | Strong |
-| PDF / DOCX / PNG output | Not in scope | Strong | Not primary |
+| TXT / JSON / CSV / HTML output | Implemented | Strong | Mixed |
+| Word-compatible output | Implemented as `.doc` HTML | Strong | Not primary |
+| PDF / Screenshot / ZIP output | Planned, not implemented | Strong | Not primary |
 | Multi-AI platform support | Not in scope | Strong | General web |
 | Direct Obsidian Vault write | Implemented via File System Access API | Usually weak or absent | Strong |
 | Downloads fallback | Implemented | Strong | Not primary |

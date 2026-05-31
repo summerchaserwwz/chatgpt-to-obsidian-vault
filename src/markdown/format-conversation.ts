@@ -27,6 +27,7 @@ export function formatConversationMarkdown({ conversation, selection, exportedAt
         message_count: conversation.messages.length,
         selected_message_count: selected.length,
         template: selection.templateId,
+        export_format: selection.exportFormat,
         write_policy: selection.writePolicy,
         source_hash: sourceHash,
         chatvault_status: conversation.status ?? "new",

@@ -55,6 +55,6 @@ export class FileSystemAccessWriter {
     await writable.write(markdown);
     await writable.close();
 
-    return { ok: true, path, status: "updated", reason: "Markdown written to Vault." };
+    return { ok: true, path, status: "updated", reason: "File written to Vault." };
   }
 }

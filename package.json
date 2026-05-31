@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local-first Chrome/Edge extension for exporting selected ChatGPT conversations into Obsidian-ready Markdown files.",
+  "description": "Local-first Chrome/Edge extension for exporting selected ChatGPT conversations to Markdown, TXT, JSON, CSV, HTML, Word-compatible files, and Obsidian Vaults.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Conversation, ConversationStatus, ConversationSummary, ExportSelection, ExportTemplateId, WriteResult } from "../shared/types";
+import type { Conversation, ConversationStatus, ConversationSummary, ExportFormat, ExportSelection, ExportTemplateId, WriteResult } from "../shared/types";
 import { createSourceHash } from "../shared/hash";
 import { clampText } from "../shared/sanitize";
-import { formatConversationMarkdown } from "../markdown/format-conversation";
+import { applyExportExtension, exportFormatOptions, formatConversationExport, getExportFormat } from "../exporters/export-formats";
 import { exportTemplates } from "../markdown/templates";
 import { renderPathTemplate } from "../writers/path-template";
 import { downloadMarkdown } from "../writers/downloads-writer-client";
@@ -32,9 +32,10 @@ type FilterKey = "all" | "new" | "updated" | "conflict";
 type ScanMode = "recent" | "selected" | "all";
 
 type PreviewState = {
-  markdown: string;
+  content: string;
   targetPath: string;
   sourceHash: string;
+  mimeType: string;
 };
 
 type Toast = {
@@ -48,6 +49,7 @@ export function SidePanelApp() {
   const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
   const [templateId, setTemplateId] = useState<ExportTemplateId>("source_archive");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("markdown");
   const [pathTemplate, setPathTemplate] = useState(defaultPathTemplate);
   const [writePolicy, setWritePolicy] = useState<ExportSelection["writePolicy"]>("update");
   const [includeFrontmatter, setIncludeFrontmatter] = useState(true);
@@ -56,7 +58,7 @@ export function SidePanelApp() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [scanLimit, setScanLimit] = useState<number>(10);
-  const [preview, setPreview] = useState<PreviewState>({ markdown: "", targetPath: "", sourceHash: "" });
+  const [preview, setPreview] = useState<PreviewState>({ content: "", targetPath: "", sourceHash: "", mimeType: "text/markdown;charset=utf-8" });
   const [vaultState, setVaultState] = useState<"missing" | "ready" | "fallback">("fallback");
   const [toast, setToast] = useState<Toast | null>(null);
   const [isWriting, setIsWriting] = useState(false);
@@ -73,6 +75,7 @@ export function SidePanelApp() {
       conversationId: activeConversation?.id ?? null,
       selectedMessageIds: [...selectedMessageIds],
       templateId,
+      exportFormat,
       includeFrontmatter,
       includeSourceLink,
       includeTranscript,
@@ -80,7 +83,7 @@ export function SidePanelApp() {
       pathTemplate,
       writePolicy
     }),
-    [activeConversation?.id, includeFrontmatter, includeSourceLink, includeTranscript, pathTemplate, selectedMessageIds, templateId, writePolicy]
+    [activeConversation?.id, exportFormat, includeFrontmatter, includeSourceLink, includeTranscript, pathTemplate, selectedMessageIds, templateId, writePolicy]
   );
 
   useEffect(() => {
@@ -88,7 +91,7 @@ export function SidePanelApp() {
 
     async function updatePreview() {
       if (!activeConversation) {
-        setPreview({ markdown: "", targetPath: "", sourceHash: "" });
+        setPreview({ content: "", targetPath: "", sourceHash: "", mimeType: getExportFormat(exportFormat).mimeType });
         return;
       }
 
@@ -97,8 +100,8 @@ export function SidePanelApp() {
         .map((message) => `${message.role}:${message.markdown}`)
         .join("\n");
       const sourceHash = await createSourceHash(`${activeConversation.id ?? activeConversation.url}\n${selectedPayload}`);
-      const targetPath = renderPathTemplate(pathTemplate, activeConversation);
-      const markdown = formatConversationMarkdown({
+      const targetPath = applyExportExtension(renderPathTemplate(pathTemplate, activeConversation), exportFormat);
+      const formatted = formatConversationExport({
         conversation: activeConversation,
         selection,
         exportedAt: new Date().toISOString(),
@@ -106,7 +109,7 @@ export function SidePanelApp() {
       });
 
       if (isMounted) {
-        setPreview({ markdown, targetPath, sourceHash });
+        setPreview({ content: formatted.content, targetPath, sourceHash, mimeType: formatted.mimeType });
       }
     }
 
@@ -114,7 +117,7 @@ export function SidePanelApp() {
     return () => {
       isMounted = false;
     };
-  }, [activeConversation, pathTemplate, selectedMessageIds, selection]);
+  }, [activeConversation, exportFormat, pathTemplate, selectedMessageIds, selection]);
 
   const filteredConversations = conversations.filter((conversation) => {
     const matchesQuery = conversation.title.toLowerCase().includes(query.toLowerCase());
@@ -127,7 +130,11 @@ export function SidePanelApp() {
         conversation: activeConversation,
         targetPath: preview.targetPath,
         sourceHash: preview.sourceHash,
-        indexRecord: readExportIndex().find((record) => record.conversationId === activeConversation.id)
+        indexRecord: readExportIndex().find((record) =>
+          record.conversationId === activeConversation.id
+            && record.targetPath === preview.targetPath
+            && record.exportFormat === exportFormat
+        )
       })
     : null;
 
@@ -265,10 +272,10 @@ export function SidePanelApp() {
     setToast({ tone: result.ok ? "success" : "warning", message: result.reason });
   }
 
-  async function copyMarkdown() {
-    if (!preview.markdown) return;
-    await navigator.clipboard.writeText(preview.markdown);
-    setToast({ tone: "success", message: "Markdown 已复制。" });
+  async function copyExport() {
+    if (!preview.content) return;
+    await navigator.clipboard.writeText(preview.content);
+    setToast({ tone: "success", message: `${getExportFormat(exportFormat).label} 已复制。` });
   }
 
   async function writeActiveConversation() {
@@ -279,13 +286,13 @@ export function SidePanelApp() {
     setIsWriting(true);
     try {
       const result = vaultState === "ready"
-        ? await writer.writeMarkdown(preview.targetPath, preview.markdown)
-        : await downloadMarkdown(preview.targetPath, preview.markdown);
+        ? await writer.writeMarkdown(preview.targetPath, preview.content)
+        : await downloadMarkdown(preview.targetPath, preview.content, preview.mimeType);
       finalizeWrite(activeConversation, result, preview.sourceHash);
     } catch (error) {
       setToast({
         tone: "danger",
-        message: error instanceof Error ? error.message : "Markdown 写入失败。"
+        message: error instanceof Error ? error.message : "文件写入失败。"
       });
     } finally {
       setIsWriting(false);
@@ -319,21 +326,23 @@ export function SidePanelApp() {
             .map((message) => message.markdown)
             .join("\n")
         );
-        const targetPath = renderPathTemplate(pathTemplate, conversation);
-        const markdown = formatConversationMarkdown({
+        const targetPath = applyExportExtension(renderPathTemplate(pathTemplate, conversation), batchSelection.exportFormat);
+        const formatted = formatConversationExport({
           conversation,
           selection: batchSelection,
           exportedAt: new Date().toISOString(),
           sourceHash
         });
-        const result = vaultState === "ready" ? await writer.writeMarkdown(targetPath, markdown) : await downloadMarkdown(targetPath, markdown);
+        const result = vaultState === "ready"
+          ? await writer.writeMarkdown(targetPath, formatted.content)
+          : await downloadMarkdown(targetPath, formatted.content, formatted.mimeType);
         finalizeWrite(conversation, result, sourceHash);
         results.push(result);
       }
 
       setToast({
         tone: results.every((result) => result.ok) ? "success" : "warning",
-        message: `已处理 ${results.length} 个 Markdown 文件。`
+        message: `已处理 ${results.length} 个 ${getExportFormat(exportFormat).label} 文件。`
       });
     } catch (error) {
       setToast({
@@ -354,7 +363,8 @@ export function SidePanelApp() {
         title: conversation.title,
         sourceHash,
         exportedAt: new Date().toISOString(),
-        templateId
+        templateId,
+        exportFormat
       });
     }
 
@@ -542,6 +552,22 @@ export function SidePanelApp() {
 
         <section className="panel right-panel" aria-label="模板与预览">
           <PanelHeader eyebrow="Step 3" title="模板与预览" meta={savePlan?.status ?? "waiting"} />
+          <div className="format-grid" aria-label="导出格式">
+            {exportFormatOptions.map((format) => (
+              <button
+                className={`format-card ${exportFormat === format.id ? "selected" : ""}`}
+                key={format.id}
+                type="button"
+                onClick={() => setExportFormat(format.id)}
+              >
+                <FileText size={15} />
+                <strong>{format.label}</strong>
+                <span>.{format.extension}</span>
+              </button>
+            ))}
+          </div>
+          <p className="template-help">{getExportFormat(exportFormat).description}</p>
+
           <div className="template-grid">
             {exportTemplates.map((template) => (
               <button
@@ -557,7 +583,7 @@ export function SidePanelApp() {
               </button>
             ))}
           </div>
-          <p className="template-help">模板只改变 Markdown 结构：原样归档、决策记录、研究笔记或调试复盘。不会改变原始对话内容。</p>
+          <p className="template-help">模板主要影响 Markdown 的组织方式；TXT、JSON、CSV、HTML、Word 会按所选消息输出，不改写原始内容。</p>
 
           <label className="field-label">
             Target path
@@ -589,13 +615,13 @@ export function SidePanelApp() {
           </div>
 
           <div className="preview-header">
-            <span>Markdown preview</span>
-            <button type="button" onClick={copyMarkdown}>
+            <span>{getExportFormat(exportFormat).label} preview</span>
+            <button type="button" onClick={copyExport}>
               <Clipboard size={15} />
               Copy
             </button>
           </div>
-          <textarea className="markdown-preview" readOnly value={preview.markdown || "未扫描真实 ChatGPT 会话。"} />
+          <textarea className="markdown-preview" readOnly value={preview.content || "未扫描真实 ChatGPT 会话。"} />
 
           <div className="batch-bar">
             <div>

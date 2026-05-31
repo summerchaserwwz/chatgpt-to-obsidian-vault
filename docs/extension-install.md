@@ -38,6 +38,7 @@ dist/
 5. 打开 `https://chatgpt.com/`
 6. 打开扩展侧边栏
 7. 点击 `Scan`
+8. 在右侧选择导出格式：Markdown、Text、JSON、CSV、HTML 或 Word
 
 ## Edge 加载方式
 
@@ -66,6 +67,8 @@ release/chatgpt-to-obsidian-vault-0.1.0.zip
 - `All` 会扫描全部发现的会话，可能很慢。
 - `Choose Vault` 用于授权 Obsidian Vault 文件夹。
 - 未授权 Vault 时会保存到浏览器 Downloads。
+- 当前可导出 `.md`、`.txt`、`.json`、`.csv`、`.html`、`.doc`。
+- PDF、截图和 ZIP 尚未实现，需要后续渲染/截图/打包管线。
 
 ## 故障排查
 

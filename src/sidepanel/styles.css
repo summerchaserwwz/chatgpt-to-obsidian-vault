@@ -658,6 +658,49 @@ input[type="checkbox"] {
   flex: 0 0 auto;
 }
 
+.format-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.format-card {
+  align-items: center;
+  background: var(--cv-surface-2);
+  border-radius: 8px;
+  color: var(--cv-muted);
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+  min-height: 66px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+}
+
+.format-card svg {
+  color: var(--cv-action-soft);
+}
+
+.format-card strong {
+  color: var(--cv-ink-strong);
+  font-size: 12px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.format-card span {
+  color: var(--cv-muted-2);
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.format-card.selected {
+  background: color-mix(in srgb, var(--cv-action) 10%, var(--cv-surface-2));
+  border-color: var(--cv-action);
+}
+
 .template-grid {
   display: grid;
   gap: 8px;
@@ -909,6 +952,7 @@ input[type="checkbox"] {
     min-height: auto;
   }
 
+  .format-grid,
   .template-grid,
   .options-row,
   .selection-toolbar {

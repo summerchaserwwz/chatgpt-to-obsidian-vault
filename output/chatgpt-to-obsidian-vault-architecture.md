@@ -7,11 +7,12 @@ Date: 2026-05-31.
 ## 1. Architecture Goals
 
 1. Local-first browser extension.
-2. Obsidian-ready Markdown generation.
-3. Direct Vault writing through explicit user authorization.
-4. Stable internal contracts between extraction, selection, formatting, and writing.
-5. Testable core logic independent from live ChatGPT DOM.
-6. Minimal permissions suitable for Chrome Web Store review.
+2. Multi-format export generation.
+3. Obsidian-ready Markdown generation remains the strongest destination-specific workflow.
+4. Direct Vault writing through explicit user authorization.
+5. Stable internal contracts between extraction, selection, formatting, and writing.
+6. Testable core logic independent from live ChatGPT DOM.
+7. Minimal permissions suitable for Chrome Web Store review.
 
 ## 2. Proposed Stack
 
@@ -40,7 +41,13 @@ flowchart LR
   CS --> Extractor["ChatGPT Extractor"]
   Extractor --> Model["Conversation Model"]
   Model --> Selection["Selection State"]
-  Selection --> Formatter["Markdown Formatter"]
+  Selection --> Formatter["Export Formatter"]
+  Formatter --> Markdown["Markdown .md"]
+  Formatter --> Text["Text .txt"]
+  Formatter --> Json["JSON .json"]
+  Formatter --> Csv["CSV .csv"]
+  Formatter --> Html["HTML .html"]
+  Formatter --> Word["Word-compatible .doc"]
   Formatter --> Preview["Preview UI"]
   Preview --> SavePlan["Save Plan Engine"]
   SavePlan --> Writer["Writer Facade"]
@@ -71,6 +78,8 @@ src/
     format-conversation.ts
     frontmatter.ts
     templates.ts
+  exporters/
+    export-formats.ts
   writers/
     writer-facade.ts
     file-system-access-writer.ts
@@ -123,6 +132,14 @@ export type Conversation = ConversationSummary & {
   messages: ConversationMessage[];
 };
 
+export type ExportFormat =
+  | "markdown"
+  | "text"
+  | "json"
+  | "csv"
+  | "html"
+  | "word";
+
 export type ConversationMessage = {
   id: string;
   role: "user" | "assistant" | "system" | "tool" | "unknown";
@@ -151,6 +168,7 @@ export type ExportSelection = {
   conversationId: string | null;
   selectedMessageIds: string[];
   templateId: ExportTemplateId;
+  exportFormat: ExportFormat;
   includeFrontmatter: boolean;
   includeSourceLink: boolean;
   includeTranscript: boolean;
@@ -177,7 +195,7 @@ sequenceDiagram
   participant U as User
   participant UI as Capture UI
   participant EX as Extractor
-  participant MD as Markdown Formatter
+  participant MD as Export Formatter
   participant SP as Save Plan
   participant WR as Writer
   participant VA as Vault
@@ -185,13 +203,13 @@ sequenceDiagram
   U->>UI: Open ChatGPT to Obsidian Vault
   UI->>EX: extract current conversation
   EX-->>UI: Conversation
-  U->>UI: Select turns and template
+  U->>UI: Select turns, format, and template
   UI->>MD: format selection
-  MD-->>UI: Markdown preview
+  MD-->>UI: File preview
   UI->>SP: compute target path and status
   SP-->>UI: Save plan
   U->>UI: Confirm write
-  UI->>WR: write markdown
+  UI->>WR: write file
   WR->>VA: create/update file
   WR-->>UI: result
   UI-->>U: saved path and status
@@ -332,6 +350,7 @@ type ExportIndexRecord = {
   sourceHash: string;
   exportedAt: string;
   templateId: ExportTemplateId;
+  exportFormat: ExportFormat;
 };
 ```
 
@@ -342,7 +361,7 @@ Storage:
 
 Index lookup order:
 
-1. Local IndexedDB by `conversationId`.
+1. Local export index by `conversationId`, `targetPath`, and `exportFormat`.
 2. Existing target file frontmatter if file can be read.
 3. Path collision detection.
 
@@ -504,7 +523,7 @@ Each error shown to user must include:
 1. Initialize Vite + React + TypeScript MV3 extension.
 2. Declare Lucide icons and design tokens before UI code.
 3. Implement shared types.
-4. Implement markdown/frontmatter/path/hash utilities.
+4. Implement export formatter, markdown/frontmatter/path/hash utilities.
 5. Implement static fixture tests.
 6. Implement current conversation extractor.
 7. Implement three-panel UI shell.

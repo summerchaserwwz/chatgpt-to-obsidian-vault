@@ -21,11 +21,12 @@ The product is an export control room, not a landing page and not a chat shell.
 
 ## 2. Visual Principles
 
-1. The Markdown file is the deliverable, so the target path and preview need strong visual priority.
-2. Batch scanning must be controllable: recent count, selected scan, and explicit full-history scan are different commands.
-3. Status should be explicit and compact. Use chips, counters, and command buttons instead of explanatory blocks.
-4. The extension should look engineered and trustworthy: thin borders, near-black surfaces, restrained motion, no fake sample content.
-5. Controls should remain usable inside Chrome side panel widths; below 860px the workspace stacks vertically.
+1. The export file is the deliverable, so format, target path, and preview need strong visual priority.
+2. Format breadth is a primary product surface. Markdown, TXT, JSON, CSV, HTML, and Word-compatible DOC must be selectable without hiding them under advanced settings.
+3. Batch scanning must be controllable: recent count, selected scan, and explicit full-history scan are different commands.
+4. Status should be explicit and compact. Use chips, counters, and command buttons instead of explanatory blocks.
+5. The extension should look engineered and trustworthy: thin borders, near-black surfaces, restrained motion, no fake sample content.
+6. Controls should remain usable inside Chrome side panel widths; below 860px the workspace stacks vertically.
 
 ## 3. Locked Design System
 
@@ -63,7 +64,7 @@ Scale:
 | body | 13px | 400 | dense UI copy |
 | caption | 12px | 400 | metadata |
 | mono-label | 11px | 650 | step labels, counters, chips |
-| preview | 12px | 400 | Markdown preview and paths |
+| preview | 12px | 400 | export preview and paths |
 
 Rules:
 
@@ -138,9 +139,10 @@ Core components:
 - `segmented`: compact tab control for filters.
 - `conversation-row`: selectable export target.
 - `turn-card`: selectable message turn.
+- `format-card`: compact export format option for Markdown, TXT, JSON, CSV, HTML, and Word-compatible DOC.
 - `template-card`: export template option.
 - `save-plan`: target path/status surface.
-- `markdown-preview`: terminal-like text area.
+- `export-preview`: terminal-like text area.
 - `toast`: bordered operational status message.
 
 ## 5. Page Skeleton
@@ -149,7 +151,7 @@ Core components:
 ┌────────────────────────────────────────────────────────────┐
 │ Command Strip: brand / vault state / Scan / Recent / Selected / All / Write│
 ├───────────────┬────────────────────────┬───────────────────┤
-│ Conversations │ Conversation Content   │ Template + Preview│
+│ Conversations │ Conversation Content   │ Format + Preview  │
 │ discovery     │ turn selection         │ save plan          │
 └───────────────┴────────────────────────┴───────────────────┘
 ```
@@ -185,13 +187,21 @@ Responsive:
 
 ### Templates
 
+- Format cards appear before templates because the user first decides the file type.
+- Supported MVP format cards:
+  - Markdown `.md`: Obsidian/frontmatter/template output.
+  - Text `.txt`: plain transcript.
+  - JSON `.json`: structured data for automation.
+  - CSV `.csv`: one message per row.
+  - HTML `.html`: browser-readable document.
+  - Word `.doc`: Word-compatible HTML document.
 - Template cards must be compact enough for the side panel.
 - Each template must show both a short label and a concrete purpose:
   - Source Archive: original archive.
   - Decision Record: decision/action scaffold.
   - Research Note: research/open-question scaffold.
   - Coding / Debug Note: debugging scaffold.
-- Add a small helper note that templates change Markdown structure, not the original conversation content.
+- Add a small helper note that templates mainly change Markdown structure; other formats keep selected content and format it for the destination.
 
 ### Save Destination
 
