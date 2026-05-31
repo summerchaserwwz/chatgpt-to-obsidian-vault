@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT to Obsidian Vault",
+  "description": "Export selected ChatGPT conversations into Obsidian-ready Markdown files.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "114",
+  "action": {
+    "default_title": "ChatGPT to Obsidian Vault"
+  },
+  "background": {
+    "service_worker": "assets/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["assets/chatgpt-entry.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  "permissions": ["downloads", "scripting", "sidePanel", "storage", "tabs"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_page": "options.html"
+}

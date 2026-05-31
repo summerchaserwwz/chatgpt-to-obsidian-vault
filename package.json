@@ -1,0 +1,33 @@
+{
+  "name": "chatgpt-to-obsidian-vault",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first Chrome/Edge extension for exporting selected ChatGPT conversations into Obsidian-ready Markdown files.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "check:no-emoji": "node scripts/check-no-emoji.mjs",
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "package:extension": "node scripts/package-extension.mjs",
+    "quality": "node scripts/run-quality.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rollup": "npm:@rollup/wasm-node@^4.60.4",
+    "vite": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.7"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+release/
+.agents/
+.super-dev/
+plugins/
+
+dist.crx
+dist.pem
+
+.DS_Store
+*.log
+
+output/playwright/

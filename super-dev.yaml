@@ -1,0 +1,65 @@
+name: chatgpt-to-obsidian-vault
+description: Local-first Chrome/Edge extension for exporting selected ChatGPT conversations into Obsidian-ready Markdown files.
+version: 0.1.0
+platform: web
+frontend: react-vite
+backend: node
+database: ""
+domain: productivity
+language_preferences:
+  - zh-CN
+  - en
+knowledge_allowed_domains:
+  - developer.chrome.com
+  - developer.mozilla.org
+  - obsidian.md
+  - help.openai.com
+  - chromewebstore.google.com
+  - github.com
+knowledge_cache_ttl_seconds: 1800
+phases:
+  - discovery
+  - intelligence
+  - drafting
+  - redteam
+  - qa
+  - delivery
+  - deployment
+experts:
+  - PM
+  - ARCHITECT
+  - UI
+  - UX
+  - SECURITY
+  - CODE
+quality_gate: 85
+host_compatibility_min_score: 80
+host_compatibility_min_ready_hosts: 1
+host_profile_targets:
+  - codex
+host_profile_enforce_selected: false
+execution_mode: standard
+overseer_enabled: false
+codex_review_enabled: false
+codex_review_phases:
+  - drafting
+  - redteam
+  - qa
+overseer_halt_on_critical: true
+plan_failure_budget: 3
+output_dir: output
+ui_library: lucide-react
+style_solution: css-modules
+state_management:
+  - react-state
+  - chrome-storage-local
+  - indexeddb
+testing_frameworks:
+  - vitest
+  - playwright
+design_inspiration_slug: apple
+cli:
+  docs_confirmation_gate: required
+  preview_confirmation_gate: required
+  current_super_dev_phase: docs_confirm
+  implementation_started: false
