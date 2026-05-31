@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT to Obsidian Vault",
-  "description": "Export selected ChatGPT conversations into Obsidian-ready Markdown files.",
+  "description": "Export selected ChatGPT conversations to Markdown, TXT, JSON, CSV, HTML, Word-compatible files, and Obsidian Vaults.",
   "version": "0.1.0",
   "minimum_chrome_version": "114",
   "action": {
