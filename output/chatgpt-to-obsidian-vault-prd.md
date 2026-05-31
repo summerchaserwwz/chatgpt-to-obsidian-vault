@@ -10,7 +10,7 @@ Date: 2026-05-31.
 
 ChatGPT to Obsidian Vault is a local-first Chrome/Edge extension that turns selected ChatGPT conversations into clean export files, with Obsidian-ready Markdown as the strongest workflow and multi-format export as the main product surface.
 
-The product centers on a single high-quality workflow:
+The product centers on a single source-capture workflow:
 
 1. select conversations
 2. select valuable conversation content
@@ -108,20 +108,24 @@ ChatGPT to Obsidian Vault is:
     - CSV `.csv`
     - HTML `.html`
     - Word-compatible `.doc`
-13. Format-specific preview.
-14. YAML properties/frontmatter generation for Markdown.
-15. File path template generation with format-aware extensions.
-16. Direct Vault writing through File System Access API.
-17. Downloads fallback.
-17. Save judgment:
+13. Multi-format write: users can select more than one format and write all selected formats in one action.
+14. Format-specific preview for the most recently selected format.
+15. Local conversation cache so scanned/sidebar results survive side panel reloads without auto-selecting every cached row.
+16. Collapsible command group and collapsible conversation list for narrow side panel use.
+17. Collapsible message-selection tools and optional Markdown template controls.
+18. YAML properties/frontmatter generation for Markdown.
+19. File path template generation with format-aware extensions.
+20. Direct Vault writing through File System Access API.
+21. Downloads fallback.
+22. Save judgment:
     - new
     - unchanged
     - updated
     - conflict
     - failed
-18. Local export index.
-19. Batch progress UI.
-20. Local-only privacy model.
+23. Local export index.
+24. Batch progress UI.
+25. Local-only privacy model.
 
 ### Out of Scope For MVP
 
@@ -174,6 +178,15 @@ ChatGPT to Obsidian Vault is:
 2. Preview updates instantly.
 3. Metadata includes `selected_turn_count`.
 4. Saved file is marked as source export with selection metadata.
+
+### 7.4 Cached Review
+
+1. User scans current, recent, selected, or all conversations.
+2. Product stores the discovered/extracted conversation list in browser-local cache.
+3. User can close/reopen the side panel and continue from the cached list.
+4. User can clear the cache from the conversation list controls.
+5. Product does not automatically select every restored row, because restored cache should not trigger accidental batch scans or exports.
+6. If local cache space is limited, product keeps the latest conversation list and may degrade older full transcripts back to summary-only rows that can be rescanned.
 
 ### 7.4 Batch Import
 
@@ -232,6 +245,7 @@ Left panel: conversation list
 - filters
 - scan scope controls: recent count, selected scan, explicit all scan
 - selection controls: select current filtered list, select exportable only, clear selection
+- cache controls: clear cached conversation list
 - status chips
 - checkboxes
 - conversation metadata
@@ -242,11 +256,13 @@ Middle panel: selected conversation content
 - source metadata
 - turn list
 - role labels
-- high-value selection controls
+- compact message selection controls: all / clear
 - full/partial selection status
 
 Right panel: template and preview
 
+- format selector is the primary control
+- Markdown templates are optional and collapsible
 - compact template presets with plain-language differences:
   - Source Archive: original archive
   - Decision Record: decision/action extraction scaffold
@@ -358,13 +374,13 @@ tags:
 
 - User can select/deselect individual message blocks.
 - User can select all.
-- User can select high-value marked content when available.
+- User can select all messages, clear selection, or manually choose individual messages.
 - Selection changes preview immediately.
 
 ### Templates
 
 - Templates change structure, not source truth.
-- MVP templates are deterministic.
+- MVP templates are deterministic. They add frontmatter and section scaffolding only; they do not call a model, summarize, or classify content quality.
 - No AI distillation is required.
 
 ### Writing

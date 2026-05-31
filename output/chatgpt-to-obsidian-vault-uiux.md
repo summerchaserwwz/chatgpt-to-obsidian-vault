@@ -23,10 +23,13 @@ The product is an export control room, not a landing page and not a chat shell.
 
 1. The export file is the deliverable, so format, target path, and preview need strong visual priority.
 2. Format breadth is a primary product surface. Markdown, TXT, JSON, CSV, HTML, and Word-compatible DOC must be selectable without hiding them under advanced settings.
-3. Batch scanning must be controllable: recent count, selected scan, and explicit full-history scan are different commands.
-4. Status should be explicit and compact. Use chips, counters, and command buttons instead of explanatory blocks.
-5. The extension should look engineered and trustworthy: thin borders, near-black surfaces, restrained motion, no fake sample content.
-6. Controls should remain usable inside Chrome side panel widths; below 860px the workspace stacks vertically.
+3. Format selection must support multiple output formats for one write action, while preview shows the most recently clicked format.
+4. Batch scanning must be controllable: recent count, selected scan, and explicit full-history scan are different commands.
+5. The top command group and conversation list must be collapsible because Chrome side panels are narrow.
+6. Message-selection tools and Markdown templates must be collapsible because they are secondary to scan/export.
+7. Status should be explicit and compact. Use chips, counters, and command buttons instead of explanatory blocks.
+8. The extension should look engineered and trustworthy: thin borders, near-black surfaces, restrained motion, no fake sample content.
+9. Controls should remain usable inside Chrome side panel widths; below 860px the workspace stacks vertically.
 
 ## 3. Locked Design System
 
@@ -132,6 +135,7 @@ Do not introduce a new UI component library for this redesign. The extension alr
 Core components:
 
 - `topbar`: sticky command strip with brand, vault state, scan current, recent count, scan recent, scan selected, explicit all scan, and write actions.
+- `collapse-button`: compact control for hiding the command group in narrow side panels.
 - `panel`: first-level workbench surface; no card nesting inside panels except repeated rows and preview/tool surfaces.
 - `secondary-button`: bordered command button.
 - `primary-button`: electric-green command button.
@@ -140,7 +144,8 @@ Core components:
 - `conversation-row`: selectable export target.
 - `turn-card`: selectable message turn.
 - `format-card`: compact export format option for Markdown, TXT, JSON, CSV, HTML, and Word-compatible DOC.
-- `template-card`: export template option.
+- `section-toggle`: compact disclosure button for optional tools.
+- `template-card`: optional Markdown export template option inside a collapsed section.
 - `save-plan`: target path/status surface.
 - `export-preview`: terminal-like text area.
 - `toast`: bordered operational status message.
@@ -184,10 +189,21 @@ Responsive:
 - Toast must report full scans, summaries, and failures separately when available.
 - The left list must provide `全选当前`, `只选可导出`, and `清空` controls.
 - Summary-only rows are selectable so users can stage a scan before full extraction.
+- Clicking a conversation row selects or deselects it and activates its preview; the checkbox remains a precise target for the same action.
+- Scanned and discovered conversations are cached locally and restored when the side panel reloads.
+- Restored cached rows must not all become selected automatically.
+- Summary-only conversations should show the empty body state directly, not a large diagnostics warning block.
+
+### Message Selection
+
+- Do not expose `high value` as a user-facing action unless a real model or explicit scoring pipeline exists.
+- Current MVP selection is deterministic: all, clear, or manual per-message checkboxes.
+- Message-selection tools are collapsed by default.
 
 ### Templates
 
 - Format cards appear before templates because the user first decides the file type.
+- Format cards are compact and multi-select. A selected card means the format will be written. The latest clicked card controls preview.
 - Supported MVP format cards:
   - Markdown `.md`: Obsidian/frontmatter/template output.
   - Text `.txt`: plain transcript.
@@ -195,13 +211,14 @@ Responsive:
   - CSV `.csv`: one message per row.
   - HTML `.html`: browser-readable document.
   - Word `.doc`: Word-compatible HTML document.
+- Markdown templates are optional and collapsed by default.
 - Template cards must be compact enough for the side panel.
 - Each template must show both a short label and a concrete purpose:
   - Source Archive: original archive.
   - Decision Record: decision/action scaffold.
   - Research Note: research/open-question scaffold.
   - Coding / Debug Note: debugging scaffold.
-- Add a small helper note that templates mainly change Markdown structure; other formats keep selected content and format it for the destination.
+- Add a small helper note that templates only change Markdown frontmatter/section structure. They do not summarize, classify value, or call a model.
 
 ### Save Destination
 

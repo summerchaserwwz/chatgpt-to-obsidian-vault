@@ -5,6 +5,8 @@ export {
   Clipboard,
   Database,
   Download,
+  ChevronDown,
+  ChevronUp,
   FileText,
   FolderOpen,
   RefreshCw,
@@ -12,5 +14,6 @@ export {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  UploadCloud
+  UploadCloud,
+  X
 } from "lucide-react";

@@ -54,6 +54,8 @@ flowchart LR
   Writer --> FSA["File System Access API"]
   Writer --> Downloads["chrome.downloads fallback"]
   SavePlan --> Index["Local Export Index"]
+  Model --> Cache["Conversation Cache"]
+  Cache --> Selection
 ```
 
 ## 4. Extension Components
@@ -87,6 +89,7 @@ src/
     path-template.ts
   storage/
     settings-store.ts
+    conversation-cache-store.ts
     directory-handle-store.ts
     export-index-store.ts
   ui/
@@ -246,6 +249,7 @@ sequenceDiagram
 Rules:
 
 - The sidebar collector is a discovery mechanism only. It must not claim full content from sidebar rows.
+- Summary-only rows surface as "body not yet read" in the UI. They should not render extraction diagnostics as a large warning block.
 - Full export requires loading each `https://chatgpt.com/c/...` URL and extracting the conversation page DOM.
 - The service worker accepts optional scan controls:
   - `limit`: scan only the first N discovered conversations.
@@ -255,6 +259,7 @@ Rules:
 - Temporary tabs are created inactive and closed after extraction to keep the user on the current ChatGPT page.
 - Failures are preserved with URL, title, and reason so the user can retry manually.
 - Summary-only conversations remain selectable so the user can choose them before extracting full text with `Scan Selected`.
+- Message selection has no model-backed quality score in MVP. UI controls are limited to deterministic all / clear / manual selection.
 
 ## 7. File Writing Architecture
 
@@ -339,7 +344,38 @@ Behavior:
 
 The export index improves update detection without scanning the whole vault every time.
 
-Suggested store:
+## 8.1 Conversation Cache
+
+The conversation cache stores the latest discovered and extracted conversations in browser-local storage.
+
+Purpose:
+
+- restore the conversation list after the side panel reloads
+- avoid losing sidebar discovery results after Chrome suspends the extension view
+- keep summary-only rows available for later `Scan Selected`
+
+Cache behavior:
+
+- write after conversation list changes
+- restore on side panel boot
+- restore does not auto-select every cached row; selection is an explicit user action
+- keep only local browser data
+- cap cached conversation count and preserve the latest rows first
+- when browser storage quota is tight, retain sidebar metadata and progressively reduce cached full transcripts instead of throwing a UI error
+- expose a UI action to clear the cache
+
+Current implementation:
+
+```ts
+type ConversationCache = {
+  cachedAt: string;
+  conversations: Conversation[];
+};
+```
+
+The side panel uses `localStorage` for the first local cache pass because it is synchronous and scoped to the extension origin. If cache size becomes a product bottleneck, the next architecture step is moving this store to IndexedDB or `chrome.storage.local` with explicit quota reporting.
+
+Export index store:
 
 ```ts
 type ExportIndexRecord = {

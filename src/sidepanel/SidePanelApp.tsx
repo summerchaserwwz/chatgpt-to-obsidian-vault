@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import type { Conversation, ConversationStatus, ConversationSummary, ExportFormat, ExportSelection, ExportTemplateId, WriteResult } from "../shared/types";
 import { createSourceHash } from "../shared/hash";
 import { clampText } from "../shared/sanitize";
@@ -8,10 +9,13 @@ import { renderPathTemplate } from "../writers/path-template";
 import { downloadMarkdown } from "../writers/downloads-writer-client";
 import { FileSystemAccessWriter } from "../writers/file-system-access-writer";
 import { computeSavePlan } from "../writers/save-plan";
+import { clearConversationCache, readConversationCache, writeConversationCache } from "../storage/conversation-cache-store";
 import { readExportIndex, upsertExportIndex } from "../storage/export-index-store";
 import {
   AlertTriangle,
   Archive,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   Clipboard,
   Database,
@@ -22,7 +26,8 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
-  UploadCloud
+  UploadCloud,
+  X
 } from "../ui/icons";
 
 const defaultPathTemplate = "AI/ChatGPT/{yyyy}/{MM}/{yyyy-MM-dd} - {safeTitle}.md";
@@ -50,6 +55,7 @@ export function SidePanelApp() {
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
   const [templateId, setTemplateId] = useState<ExportTemplateId>("source_archive");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("markdown");
+  const [selectedExportFormats, setSelectedExportFormats] = useState<Set<ExportFormat>>(new Set(["markdown"]));
   const [pathTemplate, setPathTemplate] = useState(defaultPathTemplate);
   const [writePolicy, setWritePolicy] = useState<ExportSelection["writePolicy"]>("update");
   const [includeFrontmatter, setIncludeFrontmatter] = useState(true);
@@ -63,6 +69,10 @@ export function SidePanelApp() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [isWriting, setIsWriting] = useState(false);
   const [isScanningAll, setIsScanningAll] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(() => typeof window !== "undefined" && window.innerWidth < 860);
+  const [listCollapsed, setListCollapsed] = useState(false);
+  const [turnToolsCollapsed, setTurnToolsCollapsed] = useState(true);
+  const [templatesCollapsed, setTemplatesCollapsed] = useState(true);
   const writer = useMemo(() => new FileSystemAccessWriter(), []);
 
   const activeConversation = useMemo(
@@ -87,11 +97,35 @@ export function SidePanelApp() {
   );
 
   useEffect(() => {
+    const cached = readConversationCache();
+    if (cached.length === 0) return;
+    setConversations(cached);
+    setActiveId(conversationKey(cached[0]));
+    setSelectedMessageIds(new Set(cached[0].messages.map((message) => message.id)));
+    setToast({ tone: "success", message: `已恢复 ${cached.length} 个本地缓存会话；未自动勾选，避免误触批量导出。` });
+  }, []);
+
+  useEffect(() => {
+    if (conversations.length === 0) return;
+    writeConversationCache(conversations);
+  }, [conversations]);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function updatePreview() {
       if (!activeConversation) {
         setPreview({ content: "", targetPath: "", sourceHash: "", mimeType: getExportFormat(exportFormat).mimeType });
+        return;
+      }
+
+      if (activeConversation.messages.length === 0) {
+        setPreview({
+          content: "",
+          targetPath: applyExportExtension(renderPathTemplate(pathTemplate, activeConversation), exportFormat),
+          sourceHash: "",
+          mimeType: getExportFormat(exportFormat).mimeType
+        });
         return;
       }
 
@@ -152,6 +186,24 @@ export function SidePanelApp() {
       next.add(conversation.id);
     }
     setSelectedConversationIds(next);
+  }
+
+  function activateAndToggleConversation(conversation: Conversation) {
+    activateConversation(conversation);
+    toggleConversation(conversation);
+  }
+
+  function toggleExportFormat(format: ExportFormat) {
+    setExportFormat(format);
+    setSelectedExportFormats((current) => {
+      const next = new Set(current);
+      if (next.has(format) && next.size > 1) {
+        next.delete(format);
+      } else {
+        next.add(format);
+      }
+      return next;
+    });
   }
 
   function toggleMessage(messageId: string) {
@@ -266,6 +318,15 @@ export function SidePanelApp() {
     setSelectedConversationIds(new Set());
   }
 
+  function clearCachedConversations() {
+    clearConversationCache();
+    setConversations([]);
+    setActiveId(null);
+    setSelectedConversationIds(new Set());
+    setSelectedMessageIds(new Set());
+    setToast({ tone: "success", message: "已清空本地会话缓存。" });
+  }
+
   async function chooseVault() {
     const result = await writer.chooseDirectory();
     setVaultState(result.ok ? "ready" : "missing");
@@ -285,10 +346,19 @@ export function SidePanelApp() {
     }
     setIsWriting(true);
     try {
-      const result = vaultState === "ready"
-        ? await writer.writeMarkdown(preview.targetPath, preview.content)
-        : await downloadMarkdown(preview.targetPath, preview.content, preview.mimeType);
-      finalizeWrite(activeConversation, result, preview.sourceHash);
+      const results: WriteResult[] = [];
+      for (const format of selectedExportFormats) {
+        const formatted = await formatForConversation(activeConversation, format, [...selectedMessageIds]);
+        const result = vaultState === "ready"
+          ? await writer.writeMarkdown(formatted.targetPath, formatted.content)
+          : await downloadMarkdown(formatted.targetPath, formatted.content, formatted.mimeType);
+        finalizeWrite(activeConversation, result, formatted.sourceHash, format);
+        results.push(result);
+      }
+      setToast({
+        tone: results.every((result) => result.ok) ? "success" : "warning",
+        message: `已处理 ${results.length} 个格式。`
+      });
     } catch (error) {
       setToast({
         tone: "danger",
@@ -319,30 +389,19 @@ export function SidePanelApp() {
         const messageIds = conversation.id === activeConversation.id
           ? [...selectedMessageIds]
           : conversation.messages.map((message) => message.id);
-        const batchSelection = { ...selection, conversationId: conversation.id, selectedMessageIds: messageIds };
-        const sourceHash = await createSourceHash(
-          conversation.messages
-            .filter((message) => messageIds.includes(message.id))
-            .map((message) => message.markdown)
-            .join("\n")
-        );
-        const targetPath = applyExportExtension(renderPathTemplate(pathTemplate, conversation), batchSelection.exportFormat);
-        const formatted = formatConversationExport({
-          conversation,
-          selection: batchSelection,
-          exportedAt: new Date().toISOString(),
-          sourceHash
-        });
-        const result = vaultState === "ready"
-          ? await writer.writeMarkdown(targetPath, formatted.content)
-          : await downloadMarkdown(targetPath, formatted.content, formatted.mimeType);
-        finalizeWrite(conversation, result, sourceHash);
-        results.push(result);
+        for (const format of selectedExportFormats) {
+          const formatted = await formatForConversation(conversation, format, messageIds);
+          const result = vaultState === "ready"
+            ? await writer.writeMarkdown(formatted.targetPath, formatted.content)
+            : await downloadMarkdown(formatted.targetPath, formatted.content, formatted.mimeType);
+          finalizeWrite(conversation, result, formatted.sourceHash, format);
+          results.push(result);
+        }
       }
 
       setToast({
         tone: results.every((result) => result.ok) ? "success" : "warning",
-        message: `已处理 ${results.length} 个 ${getExportFormat(exportFormat).label} 文件。`
+        message: `已处理 ${results.length} 个文件。`
       });
     } catch (error) {
       setToast({
@@ -354,7 +413,33 @@ export function SidePanelApp() {
     }
   }
 
-  function finalizeWrite(conversation: Conversation, result: WriteResult, sourceHash: string) {
+  async function formatForConversation(conversation: Conversation, format: ExportFormat, messageIds: string[]) {
+    const sourceHash = await createSourceHash(
+      conversation.messages
+        .filter((message) => messageIds.includes(message.id))
+        .map((message) => `${message.role}:${message.markdown}`)
+        .join("\n")
+    );
+    const formatSelection = {
+      ...selection,
+      conversationId: conversation.id,
+      selectedMessageIds: messageIds,
+      exportFormat: format
+    };
+    const formatted = formatConversationExport({
+      conversation,
+      selection: formatSelection,
+      exportedAt: new Date().toISOString(),
+      sourceHash
+    });
+    return {
+      ...formatted,
+      sourceHash,
+      targetPath: applyExportExtension(renderPathTemplate(pathTemplate, conversation), format)
+    };
+  }
+
+  function finalizeWrite(conversation: Conversation, result: WriteResult, sourceHash: string, writtenFormat = exportFormat) {
     if (result.ok && conversation.id) {
       upsertExportIndex({
         conversationId: conversation.id,
@@ -364,7 +449,7 @@ export function SidePanelApp() {
         sourceHash,
         exportedAt: new Date().toISOString(),
         templateId,
-        exportFormat
+        exportFormat: writtenFormat
       });
     }
 
@@ -393,7 +478,11 @@ export function SidePanelApp() {
             <h1>ChatGPT to Obsidian Vault</h1>
           </div>
         </div>
-        <div className="topbar-actions">
+        <button className="collapse-button" type="button" onClick={() => setControlsCollapsed((value) => !value)}>
+          {controlsCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+          Controls
+        </button>
+        <div className={`topbar-actions ${controlsCollapsed ? "is-collapsed" : ""}`}>
           <VaultStatus state={vaultState} />
           <button className="secondary-button" type="button" onClick={chooseVault}>
             <FolderOpen size={16} />
@@ -436,35 +525,49 @@ export function SidePanelApp() {
       ) : null}
 
       <main className="workspace">
-        <section className="panel left-panel" aria-label="会话列表">
-          <PanelHeader eyebrow="Step 1" title="会话列表" meta={`${selectedConversationIds.size} selected`} />
-          <label className="search-box">
-            <Search size={16} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索会话" />
-          </label>
-          <div className="segmented" role="tablist" aria-label="过滤会话">
-            {[
-              ["all", "全部"],
-              ["new", "新文件"],
-              ["updated", "更新"],
-              ["conflict", "确认"]
-            ].map(([key, label]) => (
-              <button
-                className={filter === key ? "active" : ""}
-                key={key}
-                type="button"
-                onClick={() => setFilter(key as FilterKey)}
-              >
-                {label}
+        <section className={`panel left-panel ${listCollapsed ? "is-collapsed" : ""}`} aria-label="会话列表">
+          <PanelHeader
+            eyebrow="Step 1"
+            title="会话列表"
+            meta={listCollapsed ? `${conversations.length} cached` : `${selectedConversationIds.size} selected`}
+            action={(
+              <button className="panel-action" type="button" onClick={() => setListCollapsed((value) => !value)}>
+                {listCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                {listCollapsed ? "展开" : "收起"}
               </button>
-            ))}
-          </div>
-          <div className="selection-toolbar" aria-label="批量选择会话">
-            <button type="button" onClick={selectFilteredConversations}>全选当前</button>
-            <button type="button" onClick={selectExportableConversations}>只选可导出</button>
-            <button type="button" onClick={clearConversationSelection}>清空</button>
-          </div>
-          <div className="conversation-list">
+            )}
+          />
+          {!listCollapsed ? (
+            <>
+              <label className="search-box">
+                <Search size={16} />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索会话" />
+              </label>
+              <div className="segmented" role="tablist" aria-label="过滤会话">
+                {[
+                  ["all", "全部"],
+                  ["new", "新文件"],
+                  ["updated", "更新"],
+                  ["conflict", "确认"]
+                ].map(([key, label]) => (
+                  <button
+                    className={filter === key ? "active" : ""}
+                    key={key}
+                    type="button"
+                    onClick={() => setFilter(key as FilterKey)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="selection-toolbar" aria-label="批量选择会话">
+                <button type="button" onClick={selectFilteredConversations}>全选当前</button>
+                <button type="button" onClick={selectExportableConversations}>只选可导出</button>
+                <button type="button" onClick={clearConversationSelection}>清空选择</button>
+                <button type="button" onClick={clearCachedConversations}>清缓存</button>
+              </div>
+              <p className="list-help">点击整行即可选择/反选并切换预览；已扫描会话会缓存在本机。</p>
+              <div className="conversation-list">
             {filteredConversations.length === 0 ? (
               <EmptyState
                 title="还没有真实 ChatGPT 会话"
@@ -474,7 +577,7 @@ export function SidePanelApp() {
               <article
                 className={`conversation-row ${conversationKey(conversation) === activeId ? "is-active" : ""}`}
                 key={conversationKey(conversation)}
-                onClick={() => activateConversation(conversation)}
+                onClick={() => activateAndToggleConversation(conversation)}
               >
                 <input
                   aria-label={`选择 ${conversation.title}`}
@@ -486,14 +589,17 @@ export function SidePanelApp() {
                 <div className="row-main">
                   <h3>{conversation.title}</h3>
                 <p>
-                  {conversation.model ?? "Unknown model"} · {conversation.messageCount ?? conversation.messages.length} turns
-                  {conversation.messages.length === 0 ? " · summary only" : ""}
+                  {conversation.messages.length === 0
+                    ? "只发现标题和链接 · 点 Scan Selected 抽取全文"
+                    : `${conversation.model ?? "Unknown model"} · ${conversation.messageCount ?? conversation.messages.length} turns`}
                 </p>
                 </div>
                 <StatusChip status={conversation.status ?? "new"} />
               </article>
             ))}
-          </div>
+              </div>
+            </>
+          ) : null}
         </section>
 
         <section className="panel middle-panel" aria-label="选择要导出的对话内容">
@@ -512,27 +618,38 @@ export function SidePanelApp() {
                   <p>{activeConversation.url}</p>
                 </div>
               </div>
-              <ExtractionDiagnostics conversation={activeConversation} />
-              <div className="inline-actions">
-                <button type="button" onClick={() => setSelectedMessageIds(new Set(activeConversation.messages.filter((message) => message.value === "high").map((message) => message.id)))}>
-                  <ShieldCheck size={15} />
-                  只选高价值
-                </button>
-                <button type="button" onClick={() => setSelectedMessageIds(new Set(activeConversation.messages.map((message) => message.id)))}>
-                  <CheckCircle2 size={15} />
-                  全选
-                </button>
-              </div>
-              <div className="progress-track" aria-label="已选择对话比例">
-                <span style={{ width: `${Math.round((selectedTurnCount / Math.max(1, activeConversation.messages.length)) * 100)}%` }} />
-              </div>
-              <div className="turn-list">
-                {activeConversation.messages.length === 0 ? (
-                  <EmptyState
-                    title="这是侧边栏摘要，不是全文"
-                    body="左侧勾选它后点 Scan Selected，或用 Scan Recent 批量打开最近几条并抽取全文。"
-                  />
-                ) : activeConversation.messages.map((message) => (
+              {activeConversation.messages.length === 0 ? (
+                <EmptyState
+                  title="尚未读取正文"
+                  body="这里只缓存了标题和链接。勾选后点 Scan Selected，或用 Scan Recent 批量打开会话并抽取全文。"
+                />
+              ) : (
+                <>
+                  <ExtractionDiagnostics conversation={activeConversation} />
+                  <div className="section-toggle-row">
+                    <button className="section-toggle" type="button" onClick={() => setTurnToolsCollapsed((value) => !value)}>
+                      {turnToolsCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                      选择工具
+                    </button>
+                    <span>{selectedTurnCount}/{activeConversation.messages.length}</span>
+                  </div>
+                  {!turnToolsCollapsed ? (
+                    <div className="inline-actions">
+                      <button type="button" onClick={() => setSelectedMessageIds(new Set(activeConversation.messages.map((message) => message.id)))}>
+                        <CheckCircle2 size={15} />
+                        全选
+                      </button>
+                      <button type="button" onClick={() => setSelectedMessageIds(new Set())}>
+                        <X size={15} />
+                        清空
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="progress-track" aria-label="已选择对话比例">
+                    <span style={{ width: `${Math.round((selectedTurnCount / Math.max(1, activeConversation.messages.length)) * 100)}%` }} />
+                  </div>
+                  <div className="turn-list">
+                    {activeConversation.messages.map((message) => (
                   <article className={`turn-card ${selectedMessageIds.has(message.id) ? "selected" : ""}`} key={message.id}>
                     <label className="turn-check">
                       <input checked={selectedMessageIds.has(message.id)} onChange={() => toggleMessage(message.id)} type="checkbox" />
@@ -540,25 +657,26 @@ export function SidePanelApp() {
                     </label>
                     <p>{clampText(message.plainText, 240)}</p>
                     <div className="turn-meta">
-                      <span>{message.value === "high" ? "高价值" : "可选"}</span>
                       <code>{message.id}</code>
                     </div>
                   </article>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </section>
 
         <section className="panel right-panel" aria-label="模板与预览">
           <PanelHeader eyebrow="Step 3" title="模板与预览" meta={savePlan?.status ?? "waiting"} />
-          <div className="format-grid" aria-label="导出格式">
+          <div className="format-grid compact" aria-label="导出格式">
             {exportFormatOptions.map((format) => (
               <button
-                className={`format-card ${exportFormat === format.id ? "selected" : ""}`}
+                className={`format-card ${selectedExportFormats.has(format.id) ? "selected" : ""} ${exportFormat === format.id ? "is-preview" : ""}`}
                 key={format.id}
                 type="button"
-                onClick={() => setExportFormat(format.id)}
+                onClick={() => toggleExportFormat(format.id)}
               >
                 <FileText size={15} />
                 <strong>{format.label}</strong>
@@ -566,24 +684,35 @@ export function SidePanelApp() {
               </button>
             ))}
           </div>
-          <p className="template-help">{getExportFormat(exportFormat).description}</p>
+          <p className="template-help">{getExportFormat(exportFormat).description} 已选择 {selectedExportFormats.size} 个格式；预览显示最近点击的格式。</p>
 
-          <div className="template-grid">
-            {exportTemplates.map((template) => (
-              <button
-                className={`template-card ${templateId === template.id ? "selected" : ""}`}
-                key={template.id}
-                type="button"
-                onClick={() => setTemplateId(template.id)}
-              >
-                <Database size={16} />
-                <strong>{template.name}</strong>
-                <span>{template.description}</span>
-                <small>{template.bestFor}</small>
-              </button>
-            ))}
+          <div className="section-toggle-row">
+            <button className="section-toggle" type="button" onClick={() => setTemplatesCollapsed((value) => !value)}>
+              {templatesCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              Markdown 模板
+            </button>
+            <span>{exportTemplates.find((template) => template.id === templateId)?.name ?? "Source Archive"}</span>
           </div>
-          <p className="template-help">模板主要影响 Markdown 的组织方式；TXT、JSON、CSV、HTML、Word 会按所选消息输出，不改写原始内容。</p>
+          {!templatesCollapsed ? (
+            <>
+              <div className="template-grid">
+                {exportTemplates.map((template) => (
+                  <button
+                    className={`template-card ${templateId === template.id ? "selected" : ""}`}
+                    key={template.id}
+                    type="button"
+                    onClick={() => setTemplateId(template.id)}
+                  >
+                    <Database size={16} />
+                    <strong>{template.name}</strong>
+                    <span>{template.description}</span>
+                    <small>{template.bestFor}</small>
+                  </button>
+                ))}
+              </div>
+              <p className="template-help">模板只改变 Markdown 的标题、frontmatter 和章节结构；它不调用大模型，也不会自动总结或判断内容价值。其他格式按同一消息集合输出。</p>
+            </>
+          ) : null}
 
           <label className="field-label">
             Target path
@@ -621,7 +750,7 @@ export function SidePanelApp() {
               Copy
             </button>
           </div>
-          <textarea className="markdown-preview" readOnly value={preview.content || "未扫描真实 ChatGPT 会话。"} />
+          <textarea className="markdown-preview" readOnly value={preview.content || "尚未读取会话正文。请先 Scan 当前会话，或勾选左侧项目后 Scan Selected。"} />
 
           <div className="batch-bar">
             <div>
@@ -682,14 +811,17 @@ function ExtractionDiagnostics({ conversation }: { conversation: Conversation })
   );
 }
 
-function PanelHeader({ eyebrow, title, meta }: { eyebrow: string; title: string; meta: string }) {
+function PanelHeader({ eyebrow, title, meta, action }: { eyebrow: string; title: string; meta: string; action?: ReactNode }) {
   return (
     <div className="panel-header">
       <div>
         <p className="eyebrow">{eyebrow}</p>
         <h2>{title}</h2>
       </div>
-      <span>{meta}</span>
+      <div className="panel-meta">
+        <span>{meta}</span>
+        {action}
+      </div>
     </div>
   );
 }
